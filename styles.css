@@ -1,0 +1,211 @@
+/* SPLASH — styles.
+   Dark base so the juice colours pop; one accent per flavour. */
+
+:root {
+  --ink: #17100b;
+  --espresso: #241811;
+  --gold: #f2a007;      /* mango */
+  --ruby: #e86a6a;      /* anaar */
+  --choc: #d9a066;      /* chocolate */
+  --cream: #f3ebdd;
+  --cream-dim: rgba(243, 235, 221, 0.72);
+  --serif: "Fraunces", Georgia, serif;
+  --sans: "Manrope", system-ui, -apple-system, sans-serif;
+  --pad: clamp(20px, 5vw, 72px);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: auto; }
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+
+body {
+  background: var(--ink);
+  color: var(--cream);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img, video { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+
+/* ---------- Progress bar ---------- */
+.progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px;
+  z-index: 60; background: rgba(243, 235, 221, 0.12);
+}
+.progress-bar {
+  height: 100%; width: 100%; background: var(--gold);
+  transform: scaleX(0); transform-origin: 0 50%;
+}
+
+/* ---------- Header ---------- */
+.site-header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px var(--pad);
+  transition: background 0.4s ease, backdrop-filter 0.4s ease, padding 0.4s ease;
+}
+.site-header.scrolled {
+  background: rgba(23, 16, 11, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding-top: 10px; padding-bottom: 10px;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 44px; height: 44px; border-radius: 50%; overflow: hidden;
+  flex: 0 0 auto; box-shadow: 0 0 0 1px rgba(243, 235, 221, 0.25);
+}
+.brand-mark img { width: 100%; height: 100%; object-fit: cover; }
+.brand-mark-lg { width: 76px; height: 76px; }
+.brand-name {
+  font-family: var(--serif); font-weight: 600;
+  font-size: 1.4rem; letter-spacing: 0.06em; line-height: 1;
+}
+
+.site-nav { display: flex; align-items: center; gap: clamp(16px, 3vw, 36px); }
+.site-nav a {
+  font-size: 0.82rem; font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--cream-dim);
+  transition: color 0.25s ease;
+}
+.site-nav a:hover { color: var(--cream); }
+
+/* ---------- Scene counter ---------- */
+.scene-counter {
+  position: fixed; right: var(--pad); bottom: 28px; z-index: 50;
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.2em;
+  color: var(--cream-dim); mix-blend-mode: difference;
+}
+.scene-counter i { font-style: normal; margin: 0 6px; opacity: 0.5; }
+.scene-counter span:first-child { color: var(--cream); }
+
+/* ---------- Scroll-scrub scenes ---------- */
+.scene { position: relative; height: 300vh; }
+
+.scene-sticky {
+  position: sticky; top: 0;
+  height: 100vh; height: 100svh;
+  overflow: hidden;
+}
+
+.scene-media { position: absolute; inset: 0; background: var(--ink); }
+.scene-media video {
+  width: 100%; height: 100%; object-fit: cover;
+  transform: scale(1.12); will-change: transform;
+  background: var(--ink);
+}
+/* Canvas frame-scrub (touch devices): sits over the video's poster and
+   draws pre-rendered frames. Hidden on desktop, where video scrub runs. */
+.scene-media canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+  transform: scale(1.12); will-change: transform;
+  display: none;
+}
+html.touch-scrub .scene-media canvas { display: block; }
+/* Light shade — just enough for the flavour name to read at entry.
+   It fades out early so the video stays clear. */
+.scene-shade {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(23, 16, 11, 0.55) 0%, rgba(23, 16, 11, 0.18) 45%, rgba(23, 16, 11, 0.08) 100%);
+  opacity: 0.5;
+}
+
+.scene-copy {
+  position: absolute; z-index: 2;
+  left: var(--pad); right: var(--pad); bottom: clamp(72px, 12vh, 130px);
+  max-width: 780px;
+}
+.kicker {
+  font-size: 0.78rem; font-weight: 700; letter-spacing: 0.28em;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 14px;
+}
+.scene-anaar .kicker { color: var(--ruby); }
+.scene-chocolate .kicker { color: var(--choc); }
+.scene-copy h1, .scene-copy h2 {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(2.6rem, 7.5vw, 5.2rem);
+  line-height: 1.02; letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.scene-num {
+  position: absolute; z-index: 2; right: var(--pad); top: 96px;
+  font-family: var(--serif); font-weight: 300;
+  font-size: clamp(4rem, 10vw, 8rem); line-height: 1;
+  color: transparent; -webkit-text-stroke: 1px rgba(243, 235, 221, 0.4);
+  user-select: none;
+}
+
+.scroll-cue {
+  position: absolute; z-index: 2; left: var(--pad); bottom: 28px;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--cream-dim);
+}
+.scroll-cue span {
+  display: block; width: 1px; height: 44px; background: var(--cream-dim);
+  transform-origin: top; animation: cue 2.2s ease-in-out infinite;
+}
+@keyframes cue {
+  0%, 100% { transform: scaleY(0.35); opacity: 0.4; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+  border-top: 1px solid rgba(243, 235, 221, 0.14);
+  padding: clamp(60px, 9vh, 90px) var(--pad) 40px;
+  background: var(--espresso);
+}
+.footer-inner {
+  display: grid; grid-template-columns: 1.4fr 1fr 1fr;
+  gap: clamp(32px, 5vw, 64px); margin-bottom: 56px;
+}
+.footer-name {
+  font-family: var(--serif); font-size: 1.5rem; font-weight: 600;
+  letter-spacing: 0.06em; margin-top: 16px;
+}
+.footer-tag { color: var(--cream-dim); font-size: 0.92rem; margin-top: 4px; }
+.footer-col h4 {
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.26em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 14px;
+}
+.footer-col p { color: var(--cream-dim); font-size: 0.95rem; line-height: 1.7; }
+.open-status { display: flex; align-items: center; gap: 9px; margin-top: 14px; }
+.open-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #b0483e; flex: 0 0 auto;
+}
+.open-dot.is-open { background: #7fb069; box-shadow: 0 0 0 4px rgba(127, 176, 105, 0.18); }
+.footer-fine {
+  font-size: 0.82rem; color: rgba(243, 235, 221, 0.45);
+  padding-top: 28px; border-top: 1px solid rgba(243, 235, 221, 0.1);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 860px) {
+  .footer-inner { grid-template-columns: 1fr 1fr; }
+  .scene-num { top: 84px; }
+}
+
+@media (max-width: 560px) {
+  .site-nav a { display: none; }
+  .brand-name { font-size: 1.2rem; }
+  .scene-copy { bottom: clamp(88px, 14vh, 120px); }
+  .footer-inner { grid-template-columns: 1fr; gap: 36px; }
+  .scene-counter { bottom: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue span { animation: none; }
+  .scene-media video { transform: none; }
+}
