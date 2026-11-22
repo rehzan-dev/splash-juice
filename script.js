@@ -146,6 +146,7 @@
        and the video's poster shows through underneath. */
     var ctx = canvas ? canvas.getContext('2d') : null;
     var lastFrame = -1;
+    var lastSeekAt = 0;
     function updateScene(progress) {
       if (isTouch) {
         if (!ctx || !clipName || !FRAME_COUNTS[clipName]) return;
@@ -164,32 +165,40 @@
       }
       if (!video || video.readyState < 1 || !video.duration) return;
       /* Never seek to exactly `duration`: there is no frame at the
-         very end, and Chrome can leave `seeking` stuck true, which
-         used to freeze the video for the rest of the session (the old
-         code skipped every seek while `seeking` was true). So the
-         target stops 0.04s short of the end, and the seeking flag is
-         deliberately NOT checked — setting currentTime while a seek
-         is in flight just retargets it, which is what scrubbing needs. */
+         very end, and Chrome can leave `seeking` stuck true.
+         And never retarget a seek every frame: while the user scrolls
+         continuously, setting currentTime on every frame aborts each
+         seek before it completes, so the picture hangs. Instead, a new
+         seek only starts once the previous one finished — with a 250ms
+         cap, so a genuinely stuck seek (unbuffered data, slow network)
+         is retargeted instead of freezing the video for the session. */
       var target = Math.min(progress * video.duration, video.duration - 0.04);
-      if (Math.abs(video.currentTime - target) > 0.05) video.currentTime = target;
+      var now = performance.now();
+      if (Math.abs(video.currentTime - target) > 0.05 &&
+          (!video.seeking || now - lastSeekAt > 250)) {
+        video.currentTime = target;
+        lastSeekAt = now;
+      }
     }
 
     /* Scroll progress -> scrub. ScrollTrigger only records the target
        progress (smoothed, 0.5s catch-up); the rAF loop applies it.
        onToggle only moves the scene counter — the scrub itself must
        not depend on it (see the note on the rAF loop above).
-       End is 'bottom top', not 'bottom bottom': the scene is 300vh
-       tall with a 100vh sticky child, so 'bottom bottom' ends the
-       scrub after 200vh — the video would sit frozen on its last
-       frame for a full viewport before the next section arrives.
-       'bottom top' spans the whole 300vh, so the video runs to its
-       end exactly as the scene leaves. */
+       End is 'bottom bottom', not 'bottom top': the scene is 300vh
+       tall with a 100vh sticky child, so the section stays pinned
+       fullscreen for exactly 200vh of scroll and then slides away.
+       'bottom bottom' ends the scrub at 200vh — the video plays its
+       FULL duration while it is fullscreen, and only then does the
+       next section arrive. ('bottom top' spanned the whole 300vh, so
+       the last third of each video played while the next section was
+       already sliding in — the viewer never saw one video finish.) */
     var scrubState = { progress: 0, update: updateScene };
     scrubStates.push(scrubState);
     ScrollTrigger.create({
       trigger: scene,
       start: 'top top',
-      end: 'bottom top',
+      end: 'bottom bottom',
       scrub: 0.5,
       onUpdate: function (self) { scrubState.progress = self.progress; },
       onToggle: function (self) {
@@ -198,13 +207,13 @@
     });
 
     /* Cinematic settle: media eases from a slight zoom to full frame.
-       Same full-section range as the scrub, so the settle and the
-       video finish together as the scene leaves. */
+       Same pinned-phase range as the scrub, so the settle and the
+       video finish together just as the scene starts to leave. */
     var zoomTarget = isTouch ? canvas : video;
     if (zoomTarget) {
       gsap.fromTo(zoomTarget, { scale: 1.12 }, {
         scale: 1, ease: 'none',
-        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom top', scrub: true }
+        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom bottom', scrub: true }
       });
     }
 
@@ -213,18 +222,18 @@
     if (shade) {
       gsap.fromTo(shade, { opacity: 0.5 }, {
         opacity: 0.1, ease: 'none',
-        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom top', scrub: true }
+        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom bottom', scrub: true }
       });
     }
 
     /* Copy: rises in early, drifts out early — the flavour name is
        a label, not the show. The hero only drifts out — its entrance
        is the load animation above. Positions are fractions of the
-       full 300vh scroll: fade-out done by 0.33, so the copy is gone
+       200vh pinned scroll: fade-out done by 0.33, so the copy is gone
        well before the video's second half. */
     if (copy) {
       var tl = gsap.timeline({
-        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom top', scrub: true }
+        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom bottom', scrub: true }
       });
       if (!isHero) {
         tl.fromTo(copy, { y: 70, opacity: 0 }, { y: 0, opacity: 1, duration: 0.10, ease: 'power2.out' }, 0.02);
