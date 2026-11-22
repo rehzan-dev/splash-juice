@@ -83,13 +83,13 @@
      Each scene scrubs pre-rendered frames: 10 fps JPEG sheets, 60
      frames per sheet (10 x 6 grid). Drawing a frame is instant, so
      scrubbing stays smooth with no decoder stalls. Desktop uses
-     sharper 720x405 cells; touch keeps lighter 480x270 cells. */
+     sharper 960x540 cells; touch keeps lighter 480x270 cells. */
   var FRAMES_PER_SHEET = 60;
   var SHEET_COLS = 10;
-  var FRAME_W = isTouch ? 480 : 720;
-  var FRAME_H = isTouch ? 270 : 405;
+  var FRAME_W = isTouch ? 480 : 960;
+  var FRAME_H = isTouch ? 270 : 540;
   var SHEET_DIR = isTouch ? 'frames/' : 'frames-hd/';
-  var SHEET_VERSION = isTouch ? 'v=5' : 'v=7';
+  var SHEET_VERSION = isTouch ? 'v=5' : 'v=8';
   var FRAME_COUNTS = {
     'mango': 70, 'anaar': 60, 'chocolate': 50
   };
