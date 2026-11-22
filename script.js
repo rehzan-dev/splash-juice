@@ -13,6 +13,34 @@
 
   var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  /* ---------- Debug panel (?debug=1) ----------
+     Temporary diagnostic: shows the live video state as on-page text
+     (currentTime, seeking, buffered ranges, readyState, error) plus
+     scroll progress, so a scrub freeze can be diagnosed without
+     DevTools. Only appears when the URL contains ?debug=1. */
+  if (window.location.search.indexOf('debug=1') !== -1) {
+    var panel = document.createElement('pre');
+    panel.id = 'debugPanel';
+    panel.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:100;margin:0;padding:10px 12px;background:rgba(0,0,0,0.8);color:#7CFC00;font:11px/1.6 monospace;white-space:pre;border-radius:6px;pointer-events:none;max-width:92vw;overflow:hidden;';
+    document.body.appendChild(panel);
+    setInterval(function () {
+      var v = document.querySelector('.scene-mango video');
+      var out = ['scrollY=' + Math.round(window.scrollY)];
+      if (!v) { panel.textContent = 'no mango video'; return; }
+      var buf = [];
+      for (var i = 0; i < v.buffered.length; i++) {
+        buf.push(v.buffered.start(i).toFixed(1) + '-' + v.buffered.end(i).toFixed(1));
+      }
+      out.push('src=' + (v.currentSrc ? v.currentSrc.split('/').pop() : '(none)'));
+      out.push('currentTime=' + v.currentTime.toFixed(2) + ' / duration=' + (v.duration || 0).toFixed(2));
+      out.push('seeking=' + v.seeking + ' readyState=' + v.readyState + ' networkState=' + v.networkState);
+      out.push('buffered=' + (buf.join(', ') || 'none'));
+      out.push('error=' + (v.error ? v.error.code : 'none'));
+      out.push('scrub progress=' + ((typeof scrubStates !== 'undefined' && scrubStates[0]) ? scrubStates[0].progress.toFixed(3) : '?'));
+      panel.textContent = out.join('\n');
+    }, 200);
+  }
+
   /* ---------- Live open / closed status (9:00 – 22:00) ---------- */
   var openDot = document.getElementById('openDot');
   var openText = document.getElementById('openText');
