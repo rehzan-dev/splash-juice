@@ -79,12 +79,12 @@
   /* ---------- Canvas frame-sheets (touch devices) ----------
      Phones can't seek video smoothly, so on touch devices each scene
      scrubs pre-rendered frames instead: 10 fps JPEG sheets, 60 frames
-     per sheet (10 x 6 grid, 640x360 each). Drawing a frame is instant,
+     per sheet (10 x 6 grid, 480x270 each). Drawing a frame is instant,
      so scrubbing stays smooth with no decoder stalls. */
   var FRAMES_PER_SHEET = 60;
   var SHEET_COLS = 10;
-  var FRAME_W = 640;
-  var FRAME_H = 360;
+  var FRAME_W = 480;
+  var FRAME_H = 270;
   var FRAME_COUNTS = {
     'mango': 100, 'anaar': 100, 'chocolate': 100
   };
@@ -176,13 +176,19 @@
     /* Scroll progress -> scrub. ScrollTrigger only records the target
        progress (smoothed, 0.5s catch-up); the rAF loop applies it.
        onToggle only moves the scene counter — the scrub itself must
-       not depend on it (see the note on the rAF loop above). */
+       not depend on it (see the note on the rAF loop above).
+       End is 'bottom top', not 'bottom bottom': the scene is 300vh
+       tall with a 100vh sticky child, so 'bottom bottom' ends the
+       scrub after 200vh — the video would sit frozen on its last
+       frame for a full viewport before the next section arrives.
+       'bottom top' spans the whole 300vh, so the video runs to its
+       end exactly as the scene leaves. */
     var scrubState = { progress: 0, update: updateScene };
     scrubStates.push(scrubState);
     ScrollTrigger.create({
       trigger: scene,
       start: 'top top',
-      end: 'bottom bottom',
+      end: 'bottom top',
       scrub: 0.5,
       onUpdate: function (self) { scrubState.progress = self.progress; },
       onToggle: function (self) {
@@ -190,12 +196,14 @@
       }
     });
 
-    /* Cinematic settle: media eases from a slight zoom to full frame. */
+    /* Cinematic settle: media eases from a slight zoom to full frame.
+       Same full-section range as the scrub, so the settle and the
+       video finish together as the scene leaves. */
     var zoomTarget = isTouch ? canvas : video;
     if (zoomTarget) {
       gsap.fromTo(zoomTarget, { scale: 1.12 }, {
         scale: 1, ease: 'none',
-        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom bottom', scrub: true }
+        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom top', scrub: true }
       });
     }
 
@@ -204,24 +212,26 @@
     if (shade) {
       gsap.fromTo(shade, { opacity: 0.5 }, {
         opacity: 0.1, ease: 'none',
-        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom bottom', scrub: true }
+        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom top', scrub: true }
       });
     }
 
     /* Copy: rises in early, drifts out early — the flavour name is
        a label, not the show. The hero only drifts out — its entrance
-       is the load animation above. */
+       is the load animation above. Positions are fractions of the
+       full 300vh scroll: fade-out done by 0.33, so the copy is gone
+       well before the video's second half. */
     if (copy) {
       var tl = gsap.timeline({
-        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom bottom', scrub: true }
+        scrollTrigger: { trigger: scene, start: 'top top', end: 'bottom top', scrub: true }
       });
       if (!isHero) {
-        tl.fromTo(copy, { y: 70, opacity: 0 }, { y: 0, opacity: 1, duration: 0.15, ease: 'power2.out' }, 0.03);
+        tl.fromTo(copy, { y: 70, opacity: 0 }, { y: 0, opacity: 1, duration: 0.10, ease: 'power2.out' }, 0.02);
       }
-      tl.to(copy, { y: -60, opacity: 0, duration: 0.15, ease: 'power2.in' }, 0.35);
+      tl.to(copy, { y: -60, opacity: 0, duration: 0.10, ease: 'power2.in' }, 0.23);
       /* Pad the timeline to 1s total, so the positions above map 1:1
-         to scroll progress — without this, 0.35 would land at 70%. */
-      tl.to({}, { duration: 0.5 }, 0.5);
+         to scroll progress — without this, 0.23 would land at 70%. */
+      tl.to({}, { duration: 0.67 }, 0.33);
     }
 
     /* Scene number fades with the copy. */
