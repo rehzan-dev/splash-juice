@@ -139,7 +139,7 @@
             (function (idx) {
               var img = new Image();
               img.onload = function () { sheets[idx] = img; };
-              img.src = 'frames/' + clipName + '-' + (idx + 1) + '.jpg';
+              img.src = 'frames/' + clipName + '-' + (idx + 1) + '.jpg?v=3';
             })(s);
           }
         });
