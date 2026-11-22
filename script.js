@@ -1,11 +1,14 @@
 /* SPLASH — scroll-scrubbed juice site.
-   Three tall sections, each with a sticky full-viewport video.
-   Scroll progress drives the video frame by frame, so scrolling down
-   plays it forward and scrolling up plays it in reverse.
-   Desktop scrubs the <video> itself (currentTime). Phones can't seek
-   video smoothly, so touch devices scrub pre-rendered frame-sheets
-   drawn on a <canvas> instead — same motion, zero decoder stalls.
-   Videos are muted (audio stripped at encode time).
+   Three tall sections, each with a sticky full-viewport canvas.
+   Scroll progress drives the frame by frame, so scrolling down plays
+   it forward and scrolling up plays it in reverse.
+   Every device scrubs pre-rendered frame-sheets drawn on a <canvas>:
+   drawing a frame is instant, so scrubbing stays smooth with no
+   decoder stalls. (Desktop used to scrub the <video> itself, but
+   seeking stalled on slower connections and the picture hung
+   mid-scroll, so the canvas is now the scrub path everywhere.)
+   The <video> elements only supply their poster stills until the
+   first sheet loads. Videos are muted (audio stripped at encode time).
    Works without JS too: videos fall back to their poster stills. */
 
 (function () {
@@ -76,25 +79,27 @@
   /* ---------- Scene counter ---------- */
   var sceneCurrent = document.getElementById('sceneCurrent');
 
-  /* ---------- Canvas frame-sheets (touch devices) ----------
-     Phones can't seek video smoothly, so on touch devices each scene
-     scrubs pre-rendered frames instead: 10 fps JPEG sheets, 60 frames
-     per sheet (10 x 6 grid, 480x270 each). Drawing a frame is instant,
-     so scrubbing stays smooth with no decoder stalls. */
+  /* ---------- Canvas frame-sheets (every device) ----------
+     Each scene scrubs pre-rendered frames: 10 fps JPEG sheets, 60
+     frames per sheet (10 x 6 grid). Drawing a frame is instant, so
+     scrubbing stays smooth with no decoder stalls. Desktop uses
+     sharper 720x405 cells; touch keeps lighter 480x270 cells. */
   var FRAMES_PER_SHEET = 60;
   var SHEET_COLS = 10;
-  var FRAME_W = 480;
-  var FRAME_H = 270;
+  var FRAME_W = isTouch ? 480 : 720;
+  var FRAME_H = isTouch ? 270 : 405;
+  var SHEET_DIR = isTouch ? 'frames/' : 'frames-hd/';
+  var SHEET_VERSION = isTouch ? 'v=5' : 'v=7';
   var FRAME_COUNTS = {
     'mango': 70, 'anaar': 60, 'chocolate': 50
   };
 
   /* One rAF loop drives every scene's scrub, so work stays in step
-     with the display. Each scene registers an update(progress) — video
-     seeking on desktop, canvas frame drawing on touch. Every scene is
-     updated every frame: gating on ScrollTrigger's active state misses
-     scenes at page load (onToggle never fires for the initial state)
-     and scenes jumped past by a fast scroll, leaving them frozen. */
+     with the display. Each scene registers an update(progress) that
+     draws the matching frame. Every scene is updated every frame:
+     gating on ScrollTrigger's active state misses scenes at page load
+     (onToggle never fires for the initial state) and scenes jumped
+     past by a fast scroll, leaving them frozen. */
   var scrubStates = [];
   (function scrubLoop() {
     scrubStates.forEach(function (st) { st.update(st.progress); });
@@ -111,19 +116,12 @@
     var clipName = video && video.dataset.src
       ? video.dataset.src.split('/').pop().split('?')[0].replace('.mp4', '') : '';
 
-    /* Desktop: load all three videos eagerly at page load. The files
-       are small (9.6 MB total) and lazy-loading left the last video
-       without metadata when its section arrived, so its poster showed
-       instead of the scrubbed video. */
-    if (!isTouch && video && video.dataset.src) {
-      video.src = video.dataset.src;
-      video.preload = 'auto';
-      video.load();
-    }
-
-    /* Touch: lazy-load this scene's frame-sheets instead. */
+    /* Lazy-load this scene's frame-sheets (two viewports ahead, so
+       the next flavour's frames are ready before it arrives). The
+       video element is never played — it only shows its poster until
+       the first sheet loads. */
     var sheets = [];
-    if (isTouch && canvas && clipName && FRAME_COUNTS[clipName]) {
+    if (canvas && clipName && FRAME_COUNTS[clipName]) {
       var totalSheets = Math.ceil(FRAME_COUNTS[clipName] / FRAMES_PER_SHEET);
       var sheetLoader = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
@@ -133,7 +131,7 @@
             (function (idx) {
               var img = new Image();
               img.onload = function () { sheets[idx] = img; };
-              img.src = 'frames/' + clipName + '-' + (idx + 1) + '.jpg?v=5';
+              img.src = SHEET_DIR + clipName + '-' + (idx + 1) + '.jpg?' + SHEET_VERSION;
             })(s);
           }
         });
@@ -141,44 +139,25 @@
       sheetLoader.observe(scene);
     }
 
-    /* The per-scene scrub update: video seek on desktop, frame draw
-       on touch. Before a sheet loads, the canvas stays transparent
+    /* The per-scene scrub update: draw the frame matching the scroll
+       progress. Before a sheet loads, the canvas stays transparent
        and the video's poster shows through underneath. */
     var ctx = canvas ? canvas.getContext('2d') : null;
+    if (canvas) { canvas.width = FRAME_W; canvas.height = FRAME_H; }
     var lastFrame = -1;
-    var lastSeekAt = 0;
     function updateScene(progress) {
-      if (isTouch) {
-        if (!ctx || !clipName || !FRAME_COUNTS[clipName]) return;
-        var total = FRAME_COUNTS[clipName];
-        var frame = Math.min(total - 1, Math.floor(progress * total));
-        if (frame === lastFrame) return;
-        var sheet = sheets[Math.floor(frame / FRAMES_PER_SHEET)];
-        if (!sheet) return;
-        var inSheet = frame % FRAMES_PER_SHEET;
-        ctx.drawImage(sheet,
-          (inSheet % SHEET_COLS) * FRAME_W,
-          Math.floor(inSheet / SHEET_COLS) * FRAME_H,
-          FRAME_W, FRAME_H, 0, 0, FRAME_W, FRAME_H);
-        lastFrame = frame;
-        return;
-      }
-      if (!video || video.readyState < 1 || !video.duration) return;
-      /* Never seek to exactly `duration`: there is no frame at the
-         very end, and Chrome can leave `seeking` stuck true.
-         And never retarget a seek every frame: while the user scrolls
-         continuously, setting currentTime on every frame aborts each
-         seek before it completes, so the picture hangs. Instead, a new
-         seek only starts once the previous one finished — with a 250ms
-         cap, so a genuinely stuck seek (unbuffered data, slow network)
-         is retargeted instead of freezing the video for the session. */
-      var target = Math.min(progress * video.duration, video.duration - 0.04);
-      var now = performance.now();
-      if (Math.abs(video.currentTime - target) > 0.05 &&
-          (!video.seeking || now - lastSeekAt > 250)) {
-        video.currentTime = target;
-        lastSeekAt = now;
-      }
+      if (!ctx || !clipName || !FRAME_COUNTS[clipName]) return;
+      var total = FRAME_COUNTS[clipName];
+      var frame = Math.min(total - 1, Math.floor(progress * total));
+      if (frame === lastFrame) return;
+      var sheet = sheets[Math.floor(frame / FRAMES_PER_SHEET)];
+      if (!sheet) return;
+      var inSheet = frame % FRAMES_PER_SHEET;
+      ctx.drawImage(sheet,
+        (inSheet % SHEET_COLS) * FRAME_W,
+        Math.floor(inSheet / SHEET_COLS) * FRAME_H,
+        FRAME_W, FRAME_H, 0, 0, FRAME_W, FRAME_H);
+      lastFrame = frame;
     }
 
     /* Scroll progress -> scrub. ScrollTrigger only records the target
@@ -209,7 +188,7 @@
     /* Cinematic settle: media eases from a slight zoom to full frame.
        Same pinned-phase range as the scrub, so the settle and the
        video finish together just as the scene starts to leave. */
-    var zoomTarget = isTouch ? canvas : video;
+    var zoomTarget = canvas;
     if (zoomTarget) {
       gsap.fromTo(zoomTarget, { scale: 1.12 }, {
         scale: 1, ease: 'none',

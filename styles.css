@@ -95,15 +95,16 @@ a { color: inherit; text-decoration: none; }
   transform: scale(1.12); will-change: transform;
   background: var(--ink);
 }
-/* Canvas frame-scrub (touch devices): sits over the video's poster and
-   draws pre-rendered frames. Hidden on desktop, where video scrub runs. */
+/* Canvas frame-scrub: sits over the video's poster and draws
+   pre-rendered frames as you scroll — on every device. Video seeking
+   stalled on slower connections (the picture hung mid-scroll), so the
+   canvas is now the scrub path everywhere; the video element only
+   supplies its poster until the first sheet loads. */
 .scene-media canvas {
   position: absolute; inset: 0;
   width: 100%; height: 100%; object-fit: cover;
   transform: scale(1.12); will-change: transform;
-  display: none;
 }
-html.touch-scrub .scene-media canvas { display: block; }
 /* Light shade — just enough for the flavour name to read at entry.
    It fades out early so the video stays clear. */
 .scene-shade {
