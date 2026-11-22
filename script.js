@@ -79,12 +79,12 @@
   /* ---------- Canvas frame-sheets (touch devices) ----------
      Phones can't seek video smoothly, so on touch devices each scene
      scrubs pre-rendered frames instead: 10 fps JPEG sheets, 60 frames
-     per sheet (10 x 6 grid, 480x270 each). Drawing a frame is instant,
+     per sheet (10 x 6 grid, 640x360 each). Drawing a frame is instant,
      so scrubbing stays smooth with no decoder stalls. */
   var FRAMES_PER_SHEET = 60;
   var SHEET_COLS = 10;
-  var FRAME_W = 480;
-  var FRAME_H = 270;
+  var FRAME_W = 640;
+  var FRAME_H = 360;
   var FRAME_COUNTS = {
     'mango': 100, 'anaar': 100, 'chocolate': 100
   };
