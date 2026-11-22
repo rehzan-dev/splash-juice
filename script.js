@@ -244,6 +244,29 @@
     }
   });
 
+  /* ---------- Debug panel (?debug=1) ----------
+     Temporary diagnostic: shows every video's live state as on-page
+     text, so a mid-way incoming video can be diagnosed without
+     DevTools. Only appears when the URL contains ?debug=1. */
+  if (window.location.search.indexOf('debug=1') !== -1) {
+    var panel = document.createElement('pre');
+    panel.id = 'debugPanel';
+    panel.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:100;margin:0;padding:10px 12px;background:rgba(0,0,0,0.8);color:#7CFC00;font:11px/1.6 monospace;white-space:pre;border-radius:6px;pointer-events:none;max-width:92vw;overflow:hidden;';
+    document.body.appendChild(panel);
+    setInterval(function () {
+      var out = ['scrollY=' + Math.round(window.scrollY) + ' touch=' + isTouch];
+      document.querySelectorAll('.scene').forEach(function (scene, i) {
+        var v = scene.querySelector('video');
+        var p = scrubStates[i] ? scrubStates[i].progress.toFixed(3) : '?';
+        if (!v) { out.push(scene.id + ': no video'); return; }
+        out.push(scene.id + ': t=' + v.currentTime.toFixed(2) + '/' + (v.duration || 0).toFixed(1) +
+          ' progress=' + p + ' seeking=' + v.seeking + ' readyState=' + v.readyState +
+          ' paused=' + v.paused);
+      });
+      panel.textContent = out.join('\n');
+    }, 200);
+  }
+
   /* ---------- Footer ---------- */
   gsap.from('.footer-inner > *', {
     y: 30, opacity: 0, duration: 0.8, stagger: 0.1, ease: 'power2.out',
