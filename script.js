@@ -111,20 +111,14 @@
     var clipName = video && video.dataset.src
       ? video.dataset.src.split('/').pop().split('?')[0].replace('.mp4', '') : '';
 
-    /* Desktop: lazy-load the video as the scene approaches (two
-       viewports ahead, so the next flavour is always ready). */
+    /* Desktop: load all three videos eagerly at page load. The files
+       are small (9.6 MB total) and lazy-loading left the last video
+       without metadata when its section arrived, so its poster showed
+       instead of the scrubbed video. */
     if (!isTouch && video && video.dataset.src) {
-      var loader = new IntersectionObserver(function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting && !video.src) {
-            video.src = video.dataset.src;
-            video.preload = 'auto';
-            video.load();
-            loader.disconnect();
-          }
-        });
-      }, { rootMargin: '200% 0px 200% 0px' });
-      loader.observe(scene);
+      video.src = video.dataset.src;
+      video.preload = 'auto';
+      video.load();
     }
 
     /* Touch: lazy-load this scene's frame-sheets instead. */
@@ -168,8 +162,15 @@
         lastFrame = frame;
         return;
       }
-      if (!video || video.readyState < 1 || !video.duration || video.seeking) return;
-      var target = progress * video.duration;
+      if (!video || video.readyState < 1 || !video.duration) return;
+      /* Never seek to exactly `duration`: there is no frame at the
+         very end, and Chrome can leave `seeking` stuck true, which
+         used to freeze the video for the rest of the session (the old
+         code skipped every seek while `seeking` was true). So the
+         target stops 0.04s short of the end, and the seeking flag is
+         deliberately NOT checked — setting currentTime while a seek
+         is in flight just retargets it, which is what scrubbing needs. */
+      var target = Math.min(progress * video.duration, video.duration - 0.04);
       if (Math.abs(video.currentTime - target) > 0.05) video.currentTime = target;
     }
 
@@ -243,29 +244,6 @@
       });
     }
   });
-
-  /* ---------- Debug panel (?debug=1) ----------
-     Temporary diagnostic: shows every video's live state as on-page
-     text, so a mid-way incoming video can be diagnosed without
-     DevTools. Only appears when the URL contains ?debug=1. */
-  if (window.location.search.indexOf('debug=1') !== -1) {
-    var panel = document.createElement('pre');
-    panel.id = 'debugPanel';
-    panel.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:100;margin:0;padding:10px 12px;background:rgba(0,0,0,0.8);color:#7CFC00;font:11px/1.6 monospace;white-space:pre;border-radius:6px;pointer-events:none;max-width:92vw;overflow:hidden;';
-    document.body.appendChild(panel);
-    setInterval(function () {
-      var out = ['scrollY=' + Math.round(window.scrollY) + ' touch=' + isTouch];
-      document.querySelectorAll('.scene').forEach(function (scene, i) {
-        var v = scene.querySelector('video');
-        var p = scrubStates[i] ? scrubStates[i].progress.toFixed(3) : '?';
-        if (!v) { out.push(scene.id + ': no video'); return; }
-        out.push(scene.id + ': t=' + v.currentTime.toFixed(2) + '/' + (v.duration || 0).toFixed(1) +
-          ' progress=' + p + ' seeking=' + v.seeking + ' readyState=' + v.readyState +
-          ' paused=' + v.paused);
-      });
-      panel.textContent = out.join('\n');
-    }, 200);
-  }
 
   /* ---------- Footer ---------- */
   gsap.from('.footer-inner > *', {
